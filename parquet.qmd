@@ -44,7 +44,49 @@ taxi
 
 ### Why do types matter?
 
-#### 1. Ordered factors
+#### 1. Ambiguous data
+
+Let's say I have a data frame containing zip codes.  When I first create it, it's character data in R.
+
+```{r}
+zip_data <- data.frame(state = c("New York", "New Jersey"), zip = c("11213", "07001"))
+zip_data
+```
+
+But what if I write it to a CSV and read it back into R?
+
+```{r}
+write.csv(zip_data, "zip.csv", row.names = FALSE)
+read.csv("zip.csv")
+```
+
+The CSV reader has tried to guess the type and assumed it's an integer and so we miss the leading 0 from the New Jersey zip.
+
+If we look at the raw CSV file, it's actually been saved as a string.
+
+```
+"state","zip"
+"New York","11213"
+"New Jersey","07001"
+```
+
+But as CSV readers have to guess data types, it's extra work. Luckily I know that `readr` has a CSV reader which handles things better.
+
+```{r}
+library(readr)
+read_csv("zip.csv")
+```
+
+But I'd rather not have to know this! And what if I'm collaborating with people and sharing data and so they might read it in with the base R one and our data gets messed up.
+
+With Parquet, storing the data type with the data means that we're always going to get the correct type.
+
+```{r}
+write_parquet(zip_data, "zip.parquet")
+read_parquet("zip.parquet")
+```
+
+#### 2. Ordered factors
 
 The diamonds dataset from ggplot2 has `cut` as an ordered factor. Easy to plot `cut` in order when we load the dataset directly from the ggplot2 package data.
 
@@ -77,6 +119,46 @@ ggplot(diamonds_from_parquet, aes(x = cut)) + geom_bar() + theme_minimal()
 
 
 
+
+#### 3. List columns
+
+And what about reading/writing list columns? Here's one from the starwars dataset from dplyr.
+
+```{r}
+library(dplyr)
+starwars_subset <- starwars |> select(name, films)
+starwars_subset
+```
+
+Base R gets us an error
+
+```{r}
+starwars_subset |>
+  write.csv("starsub.csv")
+
+read.csv("starsub.csv")
+```
+
+With readr the data is gone.
+
+```{r}
+starwars_subset |>
+  write_csv("starsub.csv")
+
+starsub_csv <- read_csv("starsub.csv")
+starsub_csv$films[1]
+```
+
+We could transform it into e.g. a single string separated by semi-colons before writing and extract it into columns after reading, but with parquet, it's preserved.
+
+```{r}
+starwars_subset |>
+  write_parquet("starsub.parquet")
+
+starsub_parquet <- read_parquet("starsub.parquet")
+
+starsub_parquet$films[1]
+```
 
 ### How do R types map to Arrow types (and vice versa)
 
