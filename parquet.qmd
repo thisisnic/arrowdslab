@@ -42,6 +42,44 @@ taxi
 
 ### Data types in Parquet files
 
+### Why do types matter?
+
+#### 1. Ordered factors
+
+The diamonds dataset from ggplot2 has `cut` as an ordered factor. Easy to plot `cut` in order when we load the dataset directly from the ggplot2 package data.
+
+```{r}
+library(ggplot2)
+ggplot(diamonds, aes(x = cut)) + geom_bar() + theme_minimal()
+```
+
+But in real life we do a lot more loading of data from files, so what happens if we save the data to a CSV and load it back in before plotting it?
+
+```{r}
+library(readr)
+
+write_csv(diamonds, "diamonds.csv")
+diamonds_from_csv <- read_csv("diamonds.csv")
+
+ggplot(diamonds_from_csv, aes(x = cut)) + geom_bar() + theme_minimal()
+```
+
+CSV files don't have any concept of ordered factors - data is just saved as strings and so we'd need to tell R that `cut` is an ordered factor before plotting it to get it right.  But, Parquet saves data types and so we can write the data to Parquet and back to R and it keep track of the fact it's an ordered factor.
+
+```{r}
+library(arrow)
+
+write_parquet(diamonds, "diamonds.parquet")
+diamonds_from_parquet <- read_parquet("diamonds.parquet")
+
+ggplot(diamonds_from_parquet, aes(x = cut)) + geom_bar() + theme_minimal()
+```
+
+
+
+
+### How do R types map to Arrow types (and vice versa)
+
 These docs, written by Danielle Navarro have excellent information about translation between types:
 
 https://arrow.apache.org/docs/r/articles/data_types.html#list-of-default-translations
