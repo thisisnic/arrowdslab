@@ -40,6 +40,59 @@ taxi
 
 ### Size/speed compared to CSVs
 
+What if we're working with a really big Parquet file? This one is 135MB.
+
+```{r}
+# fs <- S3FileSystem$create(anonymous = TRUE)
+# df <- read_parquet(fs$path("arrow-datasets/nyc-taxi/year=2019/month=1/part-0.parquet"))
+# write_parquet(df, "taxi.parquet")
+taxi_big <- read_parquet("taxi.parquet")
+nrow(taxi_big)
+```
+```{r}
+fs::file_size("taxi.parquet")
+```
+
+If we write it to CSV, how long does it take? 
+
+```{r}
+library(tictoc)
+tic()
+readr::write_csv(taxi_big, "taxi_big.csv")
+toc()
+```
+
+It took 27s last time I tried! And, how big is the CSV?
+
+```{r}
+fs::file_size("taxi_big.csv")
+```
+
+From 135MB to 924MB!
+
+And how long does it take to read the whole file?
+
+```{r}
+tic()
+from_csv <- readr::read_csv("taxi_big.csv")
+toc()
+```
+
+```{r}
+tic()
+from_parquet <- read_parquet("taxi.parquet")
+toc()
+```
+
+Waaay faster!  And what if we only want data from certain columns?
+
+```{r}
+tic()
+just_times <- read_parquet("taxi.parquet", col_select = c(pickup_datetime, dropoff_datetime))
+toc()
+```
+Even faster!
+
 ### Data types in Parquet files
 
 ### Why do types matter?
