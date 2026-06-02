@@ -2,10 +2,15 @@
 
 ## What is Parquet and why should you care?
 
-- Smaller than equivalent CSV (uses encoding and compression)
-- Contain information about data types of the columns 
-- Column-oriented - better performance for data anlaysis tasks
-- Chunked - fast to work with as can operate over parts in parallel
+- Smaller than equivalent CSV files so you can work with and share bigger datasets more easily
+- Way faster to work with than CSVs
+- Stores data types so less room for error or custom code needed to convert things when you read it in
+
+## How?
+
+- Smaller than equivalent CSV - internally uses encoding and compression and is a binary format (made for computers not humans)
+- Faster - data stored in small pieces and in columns so can read efficiently and operate in parallel
+- Data types - Parquet files store metadata internally about the data and how it's saved
 
 We'll look at these more closely later!
 
@@ -33,9 +38,9 @@ Today we'll focus on {arrow} but some examples with {nanoparquet}
 | Full Parquet type support | ✅ | Most types |
 | Nested types (lists of lists) | ✅ | ❌ |
 
-## How does Parquet actually work?
+## How do you open a Parquet file?
 
-How do you open a Parquet file? You can use `read_parquet()` from {arrow}
+ You can use `read_parquet()` from `arrow` (or `nanoarrow`!)
 
 ```{r}
 library(arrow)
@@ -50,6 +55,14 @@ taxi <- read_parquet("taxi-mini.parquet")
 class(taxi)
 
 taxi
+```
+
+## How do you save a Parquet file?
+
+Use `write_parquet()` from `arrow` (same name in `nanoarrow`!)
+
+```{r}
+write_parquet(taxi, "new_taxi.parquet")
 ```
 
 ### Size/speed compared to CSVs
@@ -108,6 +121,10 @@ toc()
 Even faster!
 
 ### Data types in Parquet files
+
+Parquet has its own data types so it can be language-agnostic. In other words, files you write in one R can be read in Python, Java, Rust, etc, and vice versa.
+
+The Arrow R package handles the mapping between R types and Parquet types automatically, which means you can read and write data to/from Parquet files in R and it'll remain the same.
 
 ### Why do types matter?
 
@@ -301,6 +318,32 @@ This is the distinction that confuses everyone:
 
 In practice: Parquet is the best default for storing and sharing data. Arrow IPC is faster to read/write but files are larger and less widely supported outside the Arrow ecosystem.
 
+## What you can and can't store in Parquet
+
+All standard R types (numeric, integer, character, logical, Date, POSIXct), list columns, and factor levels can be stored in Parquet. Custom R classes are preserved via metadata when round-tripping in R.
+
+Nested data example - list columns survive the round-trip:
+
+```{r}
+nested_data <- tibble(
+  species = c("cat", "dog", "bird"),
+  sounds  = list(
+    c("meow", "purr", "hiss"),
+    c("woof", "bark", "growl"),
+    c("tweet", "squawk")
+  )
+)
+
+write_parquet(nested_data, "nested.parquet")
+read_parquet("nested.parquet")
+```
+
+What you **can't** store:
+
+- Arbitrary R objects (ggplot objects, model fits, environments)
+- Everything must map to Parquet's type system
+- Custom R class metadata is R-specific (won't auto-translate to Python)
+
 ## Bonus: demo of analysis
 
 ## Where can I read more?
@@ -318,43 +361,6 @@ In practice: Parquet is the best default for storing and sharing data. Arrow IPC
 
 
 <!--
-
-# ============================================================================
-# PART 4: How Parquet works under the hood
-# ============================================================================
-
-# A Parquet file is organized internally like this:
-#
-#   File
-#    +-- Row Group 1
-#    |    +-- Column Chunk (col A)  ->  Pages
-#    |    +-- Column Chunk (col B)  ->  Pages
-#    |    +-- ...
-#    +-- Row Group 2
-#    |    +-- ...
-#    +-- Footer (schema, row counts, min/max statistics per chunk)
-#
-# Fun fact: they're called "parquet" files - like parquet floor tiles!
-# Each tile (column chunk) can be read independently.
-#
-# This structure enables:
-#   - Reading only the columns you need (no wasted I/O)
-#   - Skipping row groups based on statistics (e.g. min/max)
-#   - Parallel reads across row groups
-#
-# Built-in optimizations:
-#   - Dictionary encoding: repeated strings stored as key-value lookups
-#   - Run-length encoding: "Married" x 5000 stored as ("Married", 5000)
-#   - Compression: snappy (default) or zstd
-
-# You can peek at the schema stored in the file:
-taxi_table <- read_parquet(pq_path, as_data_frame = FALSE)
-schema(taxi_table)
-
-# Arrow Tables keep data in Arrow memory (not R memory).
-# Call collect() to bring it into R as a tibble:
-taxi_table |> collect()
-
 
 
 
@@ -404,32 +410,4 @@ taxi_ds |>
 #   - Aim for individual files between 20 MB and 2 GB
 #   - Avoid more than ~10,000 partition files
 
-
-# ============================================================================
-# PART 8: What you can and can't store in Parquet
-# ============================================================================
-
-# CAN store:
-#   - All standard R types (numeric, integer, character, logical, Date, POSIXct)
-#   - List columns (nested data)
-#   - Factor levels
-#   - Custom R classes (preserved via metadata when round-tripping in R)
-
-# Nested data example - list columns survive the round-trip:
-nested_data <- tibble(
-  species = c("cat", "dog", "bird"),
-  sounds  = list(
-    c("meow", "purr", "hiss"),
-    c("woof", "bark", "growl"),
-    c("tweet", "squawk")
-  )
-)
-
-write_parquet(nested_data, file.path(tmp_dir, "nested.parquet"))
-read_parquet(file.path(tmp_dir, "nested.parquet"))
-
-# CAN'T store:
-#   - Arbitrary R objects (ggplot objects, model fits, environments)
-#   - Everything must map to Parquet's type system
-#   - Custom R class metadata is R-specific (won't auto-translate to Python)
 -->
