@@ -14,7 +14,7 @@ We'll look at these more closely later!
 Pick one of...
 
 - [arrow](https://arrow.apache.org/docs/r/) - for all features, including working with multi-file datasets
-- [nanoparquet](https://r-lib.github.io/nanoparquet/) - for a no-dependency package which has most (but not all) features
+- [nanoparquet](https://r-lib.github.io/nanoparquet/) - for a no-dependency package which has most (but not all) features but can be slower on larger datasets
 - [duckdb](https://r-duckdb.org/) - for SQL-oriented workflows
 
 Today we'll focus on {arrow} but some examples with {nanoparquet}
@@ -239,16 +239,26 @@ A Parquet file is divided into smaller components.
 - column chunks, which contain...
 - pages
 
-They also contain metadata
-
+They also contain metadata in the footer
 
 
 ![](files_formats_parquet.png)
 
+### Parquet file footers
 
+The footer is the key to how Parquet files work. It the last thing that's written to the file when saving a file, but the first thing which is read when it's being read.
+
+It contains:
+
+1. The schema - the column name/type mapping
+2. Metadata for the rowgroups - where they are in the file and what encoding/compression is used; this makes it faster to read subsets
+3. Statistics - things like minimum and maximum values for columns, and how many null values - so if you're filtering, something like Arrow can use this to skip certain sections, or count rows without too much effort
+4. Additional metadata - like the Arrow-equivalent schema, or in Python, pandas metadata
 
 
 ## Reading Parquet metadata
+
+You can do this using the nanoparquet package!
 
 ```{r}
 nanoparquet::read_parquet_info("taxi-mini.parquet")
@@ -283,75 +293,7 @@ nanoparquet:::read_parquet_pages("taxi-mini.parquet")
 
 
 
-
-
-library(arrow)
-library(dplyr)
-library(tictoc)
-
-# ============================================================================
-# PART 1: What is Parquet and why should you care?
-# ============================================================================
-
-# Parquet is a binary, columnar file format designed for analytics.
-# Key advantages over CSV:
-#   - Typed: preserves data types (dates stay dates, not strings)
-#   - Smaller on disk: efficient encoding and compression
-#   - Faster to read and write
-#   - Column-oriented: can read just the columns you need
-#
-# ============================================================================
-# PART 2: Reading a Parquet file
-# ============================================================================
-
-# It's as easy as read_csv(). Let's grab a NYC taxi trip dataset
-# straight from a URL:
-
-
-
-
-# ============================================================================
-# PART 3: CSV vs Parquet
-# ============================================================================
-
-# Let's make the comparison concrete. Save our taxi data as both formats:
-
-write_csv_arrow(taxi, "taxi.csv")
-
-# --- 3a. File size ---
-fs::file_size("taxi.csv")   # CSV size in bytes
-fs::file_size("taxi-mini.parquet")    # Parquet size in bytes
-
-# Parquet is much smaller thanks to columnar encoding + compression.
-
-# Notice: the CSV reader has to guess whether timestamps are timestamps,
-# whether integers are integers vs doubles, etc. Parquet just knows.
-
-# --- 3c. Speed ---
-
-tmp_dir <- tempdir()
-
-tic("Write CSV")
-write_csv_arrow(taxi, file.path(tmp_dir, "taxi2.csv"))
-toc()
-
-tic("Write Parquet")
-write_parquet(taxi, file.path(tmp_dir, "taxi2.parquet"))
-toc()
-
-tic("Read CSV")
-read_csv_arrow("taxi.csv")
-toc()
-
-tic("Read Parquet")
-read_parquet("taxi-mini.parquet")
-toc()
-
-# With bigger files, these differences become dramatic.
-# On the full NYC taxi data (1.15 billion rows):
-#   CSV:     ~1800 MB on disk, ~10s to query
-#   Parquet: ~36 MB on disk, much faster
-
+<!--
 
 # ============================================================================
 # PART 4: How Parquet works under the hood
