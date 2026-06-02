@@ -19,6 +19,20 @@ Pick one of...
 
 Today we'll focus on {arrow} but some examples with {nanoparquet}
 
+### Using {arrow} vs. using {nanoparquet}
+
+| | {arrow} | {nanoparquet} |
+|---|---|---|
+| Dependencies | C++ library (pre-built binaries available) | None |
+| Read/write single files | ✅ | ✅ |
+| Multi-file & partitioned datasets | ✅ | ❌ |
+| Larger-than-memory data | ✅ | ❌ |
+| Remote files (S3, HTTP) | ✅ | ❌ |
+| Filter rows before reading | ✅ | ❌ |
+| Append to existing files | ❌ | ✅ |
+| Full Parquet type support | ✅ | Most types |
+| Nested types (lists of lists) | ✅ | ❌ |
+
 ## How does Parquet actually work?
 
 How do you open a Parquet file? You can use `read_parquet()` from {arrow}
