@@ -277,6 +277,16 @@ nanoparquet:::read_parquet_pages("taxi-mini.parquet")
 
 ## Arrow vs. Parquet vs. Feather
 
+This is the distinction that confuses everyone:
+
+- **Parquet** = a file format for storing data on disk (columnar, compressed, self-describing)
+- **Arrow columnar format** = a specification for how columnar data is laid out in memory — designed for zero-copy reads and fast analytics. Multiple implementations exist across languages (C++, Rust, Java, Go, etc.)
+- **Arrow IPC format** = a way to write Arrow-formatted data to disk or send it between processes, preserving the in-memory layout. Very fast to read because there's no decoding step — the data on disk is already in Arrow format
+- **Feather** = an older name for Arrow IPC files (V1 is deprecated; V2 = Arrow IPC)
+- **The {arrow} R package** = an R interface to the Arrow C++ library, giving you tools to read/write Parquet, Arrow IPC, and CSV files, plus a dplyr backend for larger-than-memory data
+
+In practice: Parquet is the best default for storing and sharing data. Arrow IPC is faster to read/write but files are larger and less widely supported outside the Arrow ecosystem.
+
 ## Bonus: demo of analysis
 
 ## Where can I read more?
@@ -332,24 +342,6 @@ schema(taxi_table)
 taxi_table |> collect()
 
 
-# ============================================================================
-# PART 5: Arrow vs Parquet vs Feather
-# ============================================================================
-
-# This is the distinction that confuses everyone:
-#
-#   Parquet = a FILE FORMAT for storing data on disk
-#             (columnar, compressed, self-describing)
-#
-#   Arrow   = an IN-MEMORY FORMAT + set of tools for processing data
-#             (the arrow R package gives you both)
-#
-#   Feather = an older name for the Arrow IPC format written to disk
-#             (V1 is deprecated; V2 = Arrow IPC)
-#
-# In practice: you store data as Parquet files, and use Arrow to
-# read/process them. Pick Parquet for storage unless you have a
-# specific reason not to.
 
 
 # ============================================================================
